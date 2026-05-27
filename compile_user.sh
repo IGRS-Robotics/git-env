@@ -64,6 +64,14 @@ gcc -s -O3 git_env.c -o "$OUTPUT_BINARY" \
 chmod 700 "$ENV_DIR"
 chmod 700 "$OUTPUT_BINARY"
 
+ACTIVATE_SCRIPT="$ENV_DIR/activate_$TARGET_USER.sh"
+
+cat > "$ACTIVATE_SCRIPT" << EOF
+#!/bin/bash
+eval "\$(${OUTPUT_BINARY})"
+EOF
+chmod 700 "$ACTIVATE_SCRIPT"
+
 echo ""
 echo "========================================="
 echo "🎉 Setup Complete for $TARGET_USER!"
@@ -74,6 +82,6 @@ echo "------------------------------------------------------------------------"
 cat "${ABS_KEY_PATH}.pub"
 echo "------------------------------------------------------------------------"
 echo ""
-echo "👉 STEP 2: Execute this whenever you want to activate your workspace:"
-echo "  eval \"\$($OUTPUT_BINARY)\""
+echo "👉 STEP 2: Source this to activate your workspace:"
+echo "  source $ACTIVATE_SCRIPT"
 echo ""
