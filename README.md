@@ -1,17 +1,25 @@
 ### GIT-ENV
 
-Inject per-user Git identity (name, email, SSH key) into shell env without touching global git config. Each identity compiled into a locked binary.
+Inject per-user Git identity (name, email, SSH key) into shell env without touching global git config. Each identity stored as an AES-256-GCM encrypted profile — decrypted only with your SSH key passphrase.
 
 ---
 
 ## Dependencies
 
-**Install `expect`** (required for SSH key passphrase automation):
+**Python 3** (3.8+) — pre-installed on all modern Linux:
 ```bash
-sudo apt install expect
+python3 --version
 ```
 
-**Disable global Git identity** (prevents global config from overriding injected env vars):
+**python3-venv** — needed if `cryptography` package is not installed:
+```bash
+sudo apt install python3-venv
+```
+
+> If `cryptography` is missing, setup automatically creates a virtualenv at
+> `~/.git_envs/.venv` and installs it there. No manual pip step needed.
+
+**Disable global Git identity** (prevents global config overriding injected env vars):
 ```bash
 git config --global --unset user.name
 git config --global --unset user.email
@@ -29,11 +37,12 @@ git config --global --list | grep user
 ```bash
 git clone <repo>
 cd git-env
-bash compile_user.sh
+python3 setup_user.py
 ```
 
-Follow prompts — enter username, full name, email. Script generates:
-- `~/.git_envs/git_loader_<username>` — locked binary
+Follow prompts — enter username, full name, email, SSH passphrase. Script generates:
+- `~/.git_envs/profile_<username>.enc` — AES-256-GCM encrypted identity profile
+- `~/.git_envs/unlock.py` — runtime decryptor (copied from repo, self-contained)
 - `~/.git_envs/activate_<username>.sh` — sourcing wrapper
 - `~/.ssh/id_ed25519_<username>` — SSH keypair (if not exists)
 
@@ -43,7 +52,6 @@ Copy printed public key to your Git host (GitHub/GitLab → SSH Keys).
 
 ## Activate Workspace
 
-Source the generated script (no more `eval`):
 ```bash
 source ~/.git_envs/activate_<username>.sh
 ```
@@ -57,6 +65,18 @@ Deactivate when done:
 ```bash
 deactivate_git
 ```
+
+---
+
+## Security
+
+Profile encrypted with **AES-256-GCM** using a key derived from your SSH passphrase via **PBKDF2-HMAC-SHA256** (600,000 iterations, random salt). Without the passphrase:
+
+- `strings profile.enc` — shows nothing readable
+- Brute-force: 600k PBKDF2 iterations per attempt, infeasible
+- Tampered file: GCM auth tag fails, immediate rejection
+
+The passphrase never leaves your machine and is not stored anywhere.
 
 ---
 

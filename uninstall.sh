@@ -5,14 +5,14 @@ ENV_DIR="$HOME/.git_envs"
 
 remove_user() {
     local user="$1"
-    local binary="$ENV_DIR/git_loader_$user"
+    local profile="$ENV_DIR/profile_$user.enc"
     local activate="$ENV_DIR/activate_$user.sh"
     local key="$HOME/.ssh/id_ed25519_$user"
     local removed=0
 
-    if [ -f "$binary" ]; then
-        rm -f "$binary"
-        echo "Removed: $binary"
+    if [ -f "$profile" ]; then
+        rm -f "$profile"
+        echo "Removed: $profile"
         removed=1
     fi
 
@@ -32,6 +32,27 @@ remove_user() {
         if [[ "$confirm" =~ ^[Yy]$ ]]; then
             rm -f "$key" "${key}.pub"
             echo "Removed SSH key pair for $user"
+        fi
+    fi
+
+    # If no profiles remain, offer to remove shared files
+    local remaining
+    remaining=$(find "$ENV_DIR" -maxdepth 1 -name "profile_*.enc" 2>/dev/null | wc -l)
+    if [ "$remaining" -eq 0 ]; then
+        if [ -f "$ENV_DIR/unlock.py" ]; then
+            read -p "No profiles remain. Remove unlock.py? [y/N]: " confirm
+            if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                rm -f "$ENV_DIR/unlock.py"
+                echo "Removed: $ENV_DIR/unlock.py"
+            fi
+        fi
+
+        if [ -d "$ENV_DIR/.venv" ]; then
+            read -p "Remove Python venv ($ENV_DIR/.venv)? [y/N]: " confirm
+            if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                rm -rf "$ENV_DIR/.venv"
+                echo "Removed: $ENV_DIR/.venv"
+            fi
         fi
     fi
 
@@ -56,9 +77,10 @@ if [ "$1" = "--all" ]; then
     fi
 
     users=()
-    for binary in "$ENV_DIR"/git_loader_*; do
-        [ -f "$binary" ] || continue
-        users+=("${binary##*/git_loader_}")
+    for profile in "$ENV_DIR"/profile_*.enc; do
+        [ -f "$profile" ] || continue
+        base="${profile##*/profile_}"
+        users+=("${base%.enc}")
     done
 
     if [ ${#users[@]} -eq 0 ]; then
